@@ -1,7 +1,8 @@
-library(ggplot2)
+library(dplyr)
 
 read_sediment_data <- function(sediment_data_path = "data/sediment_data.csv") {
   read.csv(sediment_data_path) %>% 
+    mutate(sample_date = lubridate::ymd(sample_date)) %>% 
     # convert all to mg/kg
     mutate(
       concentration = case_when(
