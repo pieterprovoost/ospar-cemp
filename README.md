@@ -8,3 +8,7 @@ OSPAR is the mechanism by which 15 Governments and the European Union cooperate 
 - Install renv with `install.packages("renv")`
 - Activate the environment with `renv::restore()`
 - Run with `shiny::runApp()`
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
