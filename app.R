@@ -58,7 +58,7 @@ ui <- page_fluid(
         column(4, selectInput("country_filter_3", "Country:", choices = NULL))
       ),
       plotOutput("country_plot"),
-      verbatimTextOutput("country_results")
+      DT::dataTableOutput("country_results")
     )
   )
 )
@@ -216,26 +216,40 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
-  output$country_results <- renderText({
+  output$country_results <- DT::renderDataTable({
     data <- determinand_group_total_per_station() %>% 
       filter(country %in% c(input$country_filter_2, input$country_filter_3))
     
     det_groups <- unique(data$determinand_group)
     
-    results <- sapply(det_groups, function(group) {
+    results <- lapply(det_groups, function(group) {
       group_data <- data %>% filter(determinand_group == group)
-      
       country1_data <- group_data %>% filter(country == input$country_filter_2) %>% pull(concentration)
       country2_data <- group_data %>% filter(country == input$country_filter_3) %>% pull(concentration)
       
       if (length(country1_data) > 0 && length(country2_data) > 0) {
         test <- wilcox.test(country1_data, country2_data)
-        sprintf("%s: p-value = %.5f (n1=%d, n2=%d)", group, test$p.value, length(country1_data), length(country2_data))
+        data.frame(
+          determinand_group = group,
+          p = round(test$p.value, 5),
+          n1 = length(country1_data),
+          n2 = length(country2_data),
+          significant = ifelse(test$p.value < 0.05, "Yes", "No")
+        )
       } else {
-        sprintf("%s: Not enough data", group)
+        data.frame(
+          determinand_group = group,
+          p = NA,
+          n1 = length(country1_data),
+          n2 = length(country2_data),
+          significant = "Insufficient data"
+        )
       }
     })
-    paste(c(sprintf("Mann-Whitney U results (%s vs %s):\n", input$country_filter_2, input$country_filter_3), results), collapse = "\n")
+    
+    res <- bind_rows(results)
+    colnames(res) <- c("Contaminant group", "P value", "n1", "n2", "Significant")
+    res %>% DT::datatable(options = list(dom = "t", ordering = FALSE))
   })
 
 }
