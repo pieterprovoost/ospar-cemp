@@ -16,8 +16,8 @@ ui <- page_fluid(
   titlePanel("OSPAR CEMP sediment contaminants"),
   p("OSPAR is the mechanism by which 15 Governments and the European Union cooperate to protect the marine environment of the North-East Atlantic.
   OSPAR's Coordinated Environmental Monitoring Programme (CEMP) aims to deliver comparable data from across the OSPAR Maritime Area.
-  This application visualizes data collected under the CEMP on sediment contaminants in the North-East Atlantic. The dataset can be downloaded",
-  tags$a(href = "https://ices-library.figshare.com/ndownloader/files/54859649", "from ICES", target = "_blank"),
+  This application visualizes data collected under the CEMP on sediment contaminants in the North-East Atlantic. The CC BY 4.0 licensed dataset can be downloaded",
+  tags$a(href = "https://ices-library.figshare.com/articles/dataset/Data_and_results_for_the_2025_OSPAR_CEMP_assessment/29155319", "from ICES", target = "_blank"),
   " and the source code for this dashboard is available from ",
   tags$a(href = "https://github.com/pieterprovoost/ospar-cemp", "https://github.com/pieterprovoost/ospar-cemp", target = "_blank"),
   ".", style = "margin-bottom: 20px;"),
@@ -45,7 +45,7 @@ ui <- page_fluid(
       ),
       div(
         style = "margin-top: 20px; margin-bottom: 20px;",
-        plotOutput("determinand_group_plot")
+        plotOutput("determinand_group_plot", height = "500px")
       )
     ),
     nav_panel(
