@@ -3,6 +3,9 @@ library(ggplot2)
 library(dplyr)
 library(bslib)
 library(tidyr)
+library(rnaturalearth)
+library(sf)
+library(ggplot2)
 source("lib.R")
 
 options(shiny.autoreload = TRUE)
@@ -13,7 +16,7 @@ ui <- page_fluid(
   titlePanel("2025 OSPAR CEMP assessment"),
   navset_pill(
     nav_panel(
-      "Station explorer",
+      "Station timeseries",
       p("Explore measurement time series by station. Select a station to inspect the data."),
       fluidRow(
         column(4, selectInput("subregion_filter", "Subregion:", choices = NULL)),
@@ -30,6 +33,13 @@ ui <- page_fluid(
         column(4, selectInput("determinand_group_select_2", "Determinand group 2:", choices = NULL))
       ),
       plotOutput("determinand_group_plot")
+    ),
+    nav_panel(
+      "Station map",
+      fluidRow(
+        column(4, selectInput("determinand_group_select_3", "Determinand group:", choices = NULL))
+      ),
+      plotOutput("determinand_map_plot")
     )
   )
 )
@@ -68,15 +78,15 @@ server <- function(input, output, session) {
   determinand_group_total_per_station <- reactive({
     req(sediment_data())
     sediment_data() %>% 
-      group_by(subregion, country, waterbody_type, station_type, station_name, sample_date, determinand_group) %>% 
+      group_by(subregion, country, waterbody_type, station_type, station_name, station_longitude, station_latitude, sample_date, determinand_group) %>% 
       summarize(concentration = sum(concentration)) %>% 
-      group_by(subregion, country, waterbody_type, station_type, station_name, determinand_group) %>% 
+      group_by(subregion, country, waterbody_type, station_type, station_name, station_longitude, station_latitude, determinand_group) %>% 
       summarize(concentration = mean(concentration))
   })
 
   determinand_group_total_per_station_wide <- reactive({
     determinand_group_total_per_station() %>%
-      pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name), names_from = determinand_group, values_from = concentration)
+      pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name, station_longitude, station_latitude), names_from = determinand_group, values_from = concentration)
   })
 
   filtered_data <- reactive({
@@ -101,6 +111,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "country_filter", choices = countries, selected = "All")
     updateSelectInput(session, "determinand_group_select_1", choices = determinand_groups, selected = determinand_groups[1])
     updateSelectInput(session, "determinand_group_select_2", choices = determinand_groups, selected = if(length(determinand_groups) > 1) determinand_groups[2] else determinand_groups[1])
+    updateSelectInput(session, "determinand_group_select_3", choices = determinand_groups, selected = determinand_groups[1])
   })
 
   output$station_list <- DT::renderDataTable(
@@ -134,6 +145,8 @@ server <- function(input, output, session) {
   })
 
   output$determinand_group_plot <- renderPlot({
+    req(input$determinand_group_select_1)
+    req(input$determinand_group_select_2)
     ggplot() +
       geom_point(data = determinand_group_total_per_station_wide(), aes_string(x = as.name(input$determinand_group_select_1), y = as.name(input$determinand_group_select_2), col = "subregion", shape = "country"), size = 2.5) +
       scale_x_continuous(trans = "log10") +
@@ -141,6 +154,17 @@ server <- function(input, output, session) {
       scale_shape_manual(values = c(15:19, 0:14)) + 
       theme_minimal()
   })
+
+  output$determinand_map_plot <- renderPlot({
+    req(input$determinand_group_select_3)
+    europe <- ne_countries(scale = 50, continent = "Europe", returnclass = "sf")
+    ggplot() +
+      geom_sf(data = europe, fill = "gray95", color = "gray70") +
+      geom_point(data = determinand_group_total_per_station_wide(), aes_string("station_longitude", "station_latitude", color = "subregion", size = as.name(input$determinand_group_select_3)), pch = 21) +
+      coord_sf(xlim = c(-35, 30), ylim = c(35, 65)) +
+      theme_minimal()
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
