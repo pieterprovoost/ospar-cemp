@@ -21,14 +21,14 @@ ui <- page_fluid(
       p("Explore measurement time series by station. Select a station to inspect the data."),
       fluidRow(
         column(4, selectInput("subregion_filter", "Subregion:", choices = NULL)),
-        column(4, selectInput("country_filter", "Country:", choices = NULL)),
+        column(4, selectInput("country_filter_1", "Country:", choices = NULL)),
         column(4, checkboxInput("log_transform", "Log transform concentrations", FALSE))
       ),
       DT::dataTableOutput("station_list"),
       plotOutput("station_plot")
     ),
     nav_panel(
-      "Determinand group concentrations",
+      "Compare determinand groups",
       fluidRow(
         column(4, selectInput("determinand_group_select_1", "Determinand group 1:", choices = NULL)),
         column(4, selectInput("determinand_group_select_2", "Determinand group 2:", choices = NULL))
@@ -41,6 +41,14 @@ ui <- page_fluid(
         column(4, selectInput("determinand_group_select_3", "Determinand group:", choices = NULL))
       ),
       leafletOutput("determinand_map_plot", height = "600px")
+    ),
+    nav_panel(
+      "Compare countries",
+      fluidRow(
+        column(4, selectInput("country_filter_2", "Country:", choices = NULL)),
+        column(4, selectInput("country_filter_3", "Country:", choices = NULL))
+      ),
+      plotOutput("country_plot")
     )
   )
 )
@@ -86,6 +94,7 @@ server <- function(input, output, session) {
   })
 
   determinand_group_total_per_station_wide <- reactive({
+    req(determinand_group_total_per_station())
     determinand_group_total_per_station() %>%
       pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name, station_longitude, station_latitude), names_from = determinand_group, values_from = concentration)
   })
@@ -96,8 +105,8 @@ server <- function(input, output, session) {
     if (input$subregion_filter != "All") {
       data <- data %>% filter(subregion == input$subregion_filter)
     }
-    if (input$country_filter != "All") {
-      data <- data %>% filter(country == input$country_filter)
+    if (input$country_filter_1 != "All") {
+      data <- data %>% filter(country == input$country_filter_1)
     }
     data %>%
       select(subregion, country, station_name, station_type, waterbody_type, years, min_year, max_year)
@@ -107,9 +116,12 @@ server <- function(input, output, session) {
     req(sediment_data())
     subregions <- c("All", unique(sediment_data()$subregion))
     countries <- c("All", unique(sediment_data()$country))
+    countries_noall <- c("All", unique(sediment_data()$country))
     determinand_groups <- unique(sediment_data()$determinand_group)
     updateSelectInput(session, "subregion_filter", choices = subregions, selected = "All")
-    updateSelectInput(session, "country_filter", choices = countries, selected = "All")
+    updateSelectInput(session, "country_filter_1", choices = countries, selected = "All")
+    updateSelectInput(session, "country_filter_2", choices = countries_noall, selected = "France")
+    updateSelectInput(session, "country_filter_3", choices = countries_noall, selected = "Germany")
     updateSelectInput(session, "determinand_group_select_1", choices = determinand_groups, selected = determinand_groups[1])
     updateSelectInput(session, "determinand_group_select_2", choices = determinand_groups, selected = if(length(determinand_groups) > 1) determinand_groups[2] else determinand_groups[1])
     updateSelectInput(session, "determinand_group_select_3", choices = determinand_groups, selected = determinand_groups[1])
@@ -156,25 +168,36 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
-output$determinand_map_plot <- renderLeaflet({
-  req(input$determinand_group_select_3)
-  data <- determinand_group_total_per_station_wide()
-  data$concentration <- data[[input$determinand_group_select_3]]
-  data$size <- data[[input$determinand_group_select_3]] / max(data[[input$determinand_group_select_3]], na.rm = TRUE)
-  
-  leaflet(data) %>%
-    addTiles() %>%
-    addCircleMarkers(
-      lng = ~station_longitude,
-      lat = ~station_latitude,
-      radius = ~sqrt(size) * 10,
-      fillOpacity = 0.1,
-      stroke = TRUE,
-      weight = 1,
-      popup = ~paste0("<b>", station_name, "</b><br>Subregion: ", subregion, "<br>Country: ", country, "<br>Average concentration: ", signif(concentration, 4), " ", default_units)
-    ) %>%
-    setView(lng = -2.5, lat = 50, zoom = 4)
-})
+  output$determinand_map_plot <- renderLeaflet({
+    req(input$determinand_group_select_3)
+    data <- determinand_group_total_per_station_wide()
+    data$concentration <- data[[input$determinand_group_select_3]]
+    data$size <- data[[input$determinand_group_select_3]] / max(data[[input$determinand_group_select_3]], na.rm = TRUE)
+    
+    leaflet(data) %>%
+      addTiles() %>%
+      addCircleMarkers(
+        lng = ~station_longitude,
+        lat = ~station_latitude,
+        radius = ~sqrt(size) * 10,
+        fillOpacity = 0.1,
+        stroke = TRUE,
+        weight = 1,
+        popup = ~paste0("<b>", station_name, "</b><br>Subregion: ", subregion, "<br>Country: ", country, "<br>Average concentration: ", signif(concentration, 4), " ", default_units)
+      ) %>%
+      setView(lng = -2.5, lat = 50, zoom = 4)
+  })
+
+  output$country_plot <- renderPlot({
+    data <- determinand_group_total_per_station() %>% 
+      filter(country %in% c(input$country_filter_2, input$country_filter_3))
+
+    ggplot() +
+      geom_violin(data = data, aes(country, concentration)) +
+      geom_jitter(data = data, aes(country, concentration), height = 0, width = 0.2) +
+      facet_wrap(~determinand_group, scales = "free") +
+      theme_minimal()
+  })
 
 }
 
