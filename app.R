@@ -31,7 +31,10 @@ ui <- page_fluid(
         column(4, checkboxInput("log_transform", "Log transform concentrations", FALSE))
       ),
       DT::dataTableOutput("station_list"),
-      plotOutput("station_plot")
+      div(
+        style = "margin-top: 30px; margin-bottom: 20px;",
+        plotOutput("station_plot")
+      )
     ),
     nav_panel(
       "Compare contaminant groups",
@@ -40,7 +43,10 @@ ui <- page_fluid(
         column(4, selectInput("determinand_group_select_1", "Contaminant group 1:", choices = NULL)),
         column(4, selectInput("determinand_group_select_2", "Contaminant group 2:", choices = NULL))
       ),
-      plotOutput("determinand_group_plot", height = "500px")
+      div(
+        style = "margin-top: 20px; margin-bottom: 20px;",
+        plotOutput("determinand_group_plot")
+      )
     ),
     nav_panel(
       "Station map",
@@ -48,7 +54,10 @@ ui <- page_fluid(
       fluidRow(
         column(4, selectInput("determinand_group_select_3", "Contaminant group:", choices = NULL))
       ),
-      leafletOutput("determinand_map_plot", height = "600px")
+      div(
+        style = "margin-top: 20px; margin-bottom: 20px;",
+        leafletOutput("determinand_map_plot", height = "600px")
+      )
     ),
     nav_panel(
       "Compare countries",
