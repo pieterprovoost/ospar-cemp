@@ -171,7 +171,7 @@ output$determinand_map_plot <- renderLeaflet({
       fillOpacity = 0.1,
       stroke = TRUE,
       weight = 1,
-      popup = ~paste0("Average concentration: ", signif(concentration, 4), " ", default_units)
+      popup = ~paste0("<b>", station_name, "</b><br>Subregion: ", subregion, "<br>Country: ", country, "<br>Average concentration: ", signif(concentration, 4), " ", default_units)
     ) %>%
     setView(lng = -2.5, lat = 50, zoom = 4)
 })
