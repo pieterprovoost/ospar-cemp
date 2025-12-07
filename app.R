@@ -35,16 +35,16 @@ ui <- page_fluid(
     ),
     nav_panel(
       "Compare contaminant groups",
-      p("This tab visualizes the average concentration of different contaminants for each station. Click the bubbles to get more information for a specific station.", style = "margin-top: 20px;"),
+      p("This tab visualizes the average concentration of different contaminants for each station.", style = "margin-top: 20px;"),
       fluidRow(
         column(4, selectInput("determinand_group_select_1", "Contaminant group 1:", choices = NULL)),
         column(4, selectInput("determinand_group_select_2", "Contaminant group 2:", choices = NULL))
       ),
-      plotOutput("determinand_group_plot")
+      plotOutput("determinand_group_plot", height = "500px")
     ),
     nav_panel(
       "Station map",
-      p("This tab visualizes the average concentration of different contaminants for each station on a map.", style = "margin-top: 20px;"),
+      p("This tab visualizes the average concentration of different contaminants for each station on a map. Click the bubbles to get more information for a specific station.", style = "margin-top: 20px;"),
       fluidRow(
         column(4, selectInput("determinand_group_select_3", "Contaminant group:", choices = NULL))
       ),
@@ -52,7 +52,7 @@ ui <- page_fluid(
     ),
     nav_panel(
       "Compare countries",
-      p("This tab compares contaminant concentrations between two countries. To assess whether concentrations for different groups differ between countries, Mann-Whitney U tests are performed for every contaminant group.", style = "margin-top: 20px;"),
+      p("This tab compares contaminant concentrations between two countries. To assess whether concentrations for different groups differ between countries, nonparametric Mann-Whitney U tests are performed for every contaminant group.", style = "margin-top: 20px;"),
       fluidRow(
         column(4, selectInput("country_filter_2", "Country:", choices = NULL)),
         column(4, selectInput("country_filter_3", "Country:", choices = NULL))
@@ -119,7 +119,8 @@ server <- function(input, output, session) {
       data <- data %>% filter(country == input$country_filter_1)
     }
     data %>%
-      select(subregion, country, station_name, station_type, waterbody_type, years, min_year, max_year)
+      select(subregion, country, station_name, station_type, waterbody_type, years, min_year, max_year) %>% 
+      arrange(desc(years))
   })
   
   observe({
@@ -163,6 +164,8 @@ server <- function(input, output, session) {
         geom_point(data = station_data_determinand_group, aes(sample_date, concentration, color = determinand_group), shape = 21, size = 2.5) +
         geom_smooth(data = station_data_determinand_group, aes(sample_date, concentration, color = determinand_group), lwd = 0.7, alpha = 0.2) +
         scale_y_continuous(trans = trans) +
+        xlab("Sample date") +
+        ylab(paste0("Concentration (", default_units, ")")) +
         theme_minimal()
     })
   })
@@ -174,6 +177,8 @@ server <- function(input, output, session) {
       geom_point(data = determinand_group_total_per_station_wide(), aes_string(x = as.name(input$determinand_group_select_1), y = as.name(input$determinand_group_select_2), col = "subregion", shape = "country"), size = 2.5) +
       scale_x_continuous(trans = "log10") +
       scale_y_continuous(trans = "log10") +
+      xlab(paste0(input$determinand_group_select_1, " (", default_units, ")")) +
+      ylab(paste0(input$determinand_group_select_2, " (", default_units, ")")) +
       scale_shape_manual(values = c(15:19, 0:14)) + 
       theme_minimal()
   })
@@ -206,6 +211,8 @@ server <- function(input, output, session) {
       geom_violin(data = data, aes(country, concentration)) +
       geom_jitter(data = data, aes(country, concentration), height = 0, width = 0.2) +
       facet_wrap(~determinand_group, scales = "free") +
+      xlab("Country") +
+      ylab(paste0("Concentration (", default_units, ")")) +
       theme_minimal()
   })
 
