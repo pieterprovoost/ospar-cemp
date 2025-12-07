@@ -7,31 +7,6 @@ source("lib.R")
 
 options(shiny.autoreload = TRUE)
 
-# data loading
-
-sediment_data <- read_sediment_data()
-
-station_list <- sediment_data %>%
-  group_by(region, subregion, country, station_name, station_latitude, station_longitude, station_type, waterbody_type) %>%
-  summarize(
-    determinands = n_distinct(determinand),
-    measurements = n(),
-    years = n_distinct(monitoring_year),
-    min_year = min(monitoring_year, na.rm = TRUE),
-    max_year = max(monitoring_year, na.rm = TRUE),
-    interval = as.integer(max(monitoring_year, na.rm = TRUE) - min(monitoring_year, na.rm = TRUE) + 1)
-  , .groups = "drop") %>% 
-  arrange(region, subregion, country, station_name)
-
-determinand_group_total_per_station <- sediment_data %>% 
-  group_by(subregion, country, waterbody_type, station_type, station_name, sample_date, determinand_group) %>% 
-  summarize(concentration = sum(concentration)) %>% 
-  group_by(subregion, country, waterbody_type, station_type, station_name, determinand_group) %>% 
-  summarize(concentration = mean(concentration))
-
-determinand_group_total_per_station_wide <- determinand_group_total_per_station %>%
-  pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name), names_from = determinand_group, values_from = concentration)
-
 # UI
 
 ui <- page_fluid(
@@ -41,8 +16,8 @@ ui <- page_fluid(
       "Station explorer",
       p("Explore measurement time series by station. Select a station to inspect the data."),
       fluidRow(
-        column(4, selectInput("subregion_filter", "Subregion:", choices = c("All", unique(station_list$subregion)), selected = "All")),
-        column(4, selectInput("country_filter", "Country:", choices = c("All", unique(station_list$country)), selected = "All")),
+        column(4, selectInput("subregion_filter", "Subregion:", choices = NULL)),
+        column(4, selectInput("country_filter", "Country:", choices = NULL)),
         column(4, checkboxInput("log_transform", "Log transform concentrations", FALSE))
       ),
       DT::dataTableOutput("station_list"),
@@ -51,8 +26,8 @@ ui <- page_fluid(
     nav_panel(
       "Determinand group concentrations",
       fluidRow(
-        column(4, selectInput("determinand_group_select_1", "Determinand group 1:", choices = unique(sediment_data$determinand_group), selected = "Metals")),
-        column(4, selectInput("determinand_group_select_2", "Determinand group 2:", choices = unique(sediment_data$determinand_group), selected = "Polychlorinated biphenyls"))
+        column(4, selectInput("determinand_group_select_1", "Determinand group 1:", choices = NULL)),
+        column(4, selectInput("determinand_group_select_2", "Determinand group 2:", choices = NULL))
       ),
       plotOutput("determinand_group_plot")
     )
@@ -61,9 +36,52 @@ ui <- page_fluid(
 
 # server
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+
+  sediment_data <- reactive({
+    tryCatch(
+      {
+        read_sediment_data()
+      },
+      error = function(e) {
+        showNotification("Could not load sediment data. Please check that the data file exists.", type = "error", duration = NULL)
+        return(NULL)
+      }
+    )
+  })
+
+  station_list <- reactive({
+    req(sediment_data())
+    sediment_data() %>%
+      group_by(region, subregion, country, station_name, station_latitude, station_longitude, station_type, waterbody_type) %>%
+      summarize(
+        determinands = n_distinct(determinand),
+        measurements = n(),
+        years = n_distinct(monitoring_year),
+        min_year = min(monitoring_year, na.rm = TRUE),
+        max_year = max(monitoring_year, na.rm = TRUE),
+        interval = as.integer(max(monitoring_year, na.rm = TRUE) - min(monitoring_year, na.rm = TRUE) + 1)
+      , .groups = "drop") %>% 
+      arrange(region, subregion, country, station_name)
+    })
+
+  determinand_group_total_per_station <- reactive({
+    req(sediment_data())
+    sediment_data() %>% 
+      group_by(subregion, country, waterbody_type, station_type, station_name, sample_date, determinand_group) %>% 
+      summarize(concentration = sum(concentration)) %>% 
+      group_by(subregion, country, waterbody_type, station_type, station_name, determinand_group) %>% 
+      summarize(concentration = mean(concentration))
+  })
+
+  determinand_group_total_per_station_wide <- reactive({
+    determinand_group_total_per_station() %>%
+      pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name), names_from = determinand_group, values_from = concentration)
+  })
+
   filtered_data <- reactive({
-    data <- station_list
+    req(station_list())
+    data <- station_list()
     if (input$subregion_filter != "All") {
       data <- data %>% filter(subregion == input$subregion_filter)
     }
@@ -74,6 +92,17 @@ server <- function(input, output) {
       select(subregion, country, station_name, station_type, waterbody_type, years, min_year, max_year)
   })
   
+  observe({
+    req(sediment_data())
+    subregions <- c("All", unique(sediment_data()$subregion))
+    countries <- c("All", unique(sediment_data()$country))
+    determinand_groups <- unique(sediment_data()$determinand_group)
+    updateSelectInput(session, "subregion_filter", choices = subregions, selected = "All")
+    updateSelectInput(session, "country_filter", choices = countries, selected = "All")
+    updateSelectInput(session, "determinand_group_select_1", choices = determinand_groups, selected = determinand_groups[1])
+    updateSelectInput(session, "determinand_group_select_2", choices = determinand_groups, selected = if(length(determinand_groups) > 1) determinand_groups[2] else determinand_groups[1])
+  })
+
   output$station_list <- DT::renderDataTable(
     filtered_data() %>% 
       DT::datatable(selection = "single", rownames = FALSE, options = list(pageLength = 10, searching = FALSE))
@@ -84,7 +113,7 @@ server <- function(input, output) {
     
     selected_station <- filtered_data()$station_name[input$station_list_rows_selected]
     
-    station_data <- sediment_data %>% 
+    station_data <- sediment_data() %>% 
       filter(station_name == selected_station)
     
     station_data_determinand_group <- station_data %>% 
@@ -106,9 +135,10 @@ server <- function(input, output) {
 
   output$determinand_group_plot <- renderPlot({
     ggplot() +
-      geom_point(data = determinand_group_total_per_station_wide, aes_string(x = as.name(input$determinand_group_select_1), y = as.name(input$determinand_group_select_2), col = "subregion", shape = "country"), size = 2.5) +
+      geom_point(data = determinand_group_total_per_station_wide(), aes_string(x = as.name(input$determinand_group_select_1), y = as.name(input$determinand_group_select_2), col = "subregion", shape = "country"), size = 2.5) +
       scale_x_continuous(trans = "log10") +
       scale_y_continuous(trans = "log10") +
+      scale_shape_manual(values = c(15:19, 0:14)) + 
       theme_minimal()
   })
 }

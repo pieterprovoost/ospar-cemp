@@ -1,7 +1,11 @@
 library(dplyr)
 
-read_sediment_data <- function(sediment_data_path = "data/sediment_data.csv") {
-  read.csv(sediment_data_path) %>% 
+data_folder <- "data"
+data_file <- "sediment_data.csv"
+data_path <- file.path(data_folder, data_file)
+
+read_sediment_data <- function() {
+  read.csv(data_path) %>% 
     mutate(sample_date = lubridate::ymd(sample_date)) %>% 
     # convert all to mg/kg
     mutate(
