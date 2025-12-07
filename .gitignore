@@ -2,3 +2,5 @@
 dev.R
 .Rhistory
 data/**
+.Rprofile
+
