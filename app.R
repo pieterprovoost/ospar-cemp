@@ -5,6 +5,7 @@ library(bslib)
 library(tidyr)
 library(sf)
 library(leaflet)
+
 source("lib.R")
 
 options(shiny.autoreload = TRUE)
@@ -12,11 +13,14 @@ options(shiny.autoreload = TRUE)
 # UI
 
 ui <- page_fluid(
-  titlePanel("2025 OSPAR CEMP assessment"),
+  titlePanel("OSPAR CEMP sediment contaminants"),
   p("OSPAR is the mechanism by which 15 Governments and the European Union cooperate to protect the marine environment of the North-East Atlantic.
   OSPAR's Coordinated Environmental Monitoring Programme (CEMP) aims to deliver comparable data from across the OSPAR Maritime Area.
-  This application visualizes data collected under the CEMP on sediment contaminants in the North-East Atlantic. The dataset is hosted by ICES and publicly available.
-  The source code for this dashboard is available from https://github.com/pieterprovoost/ospar-cemp.", style = "margin-bottom: 20px;"),
+  This application visualizes data collected under the CEMP on sediment contaminants in the North-East Atlantic. The dataset can be downloaded",
+  tags$a(href = "https://ices-library.figshare.com/ndownloader/files/54859649", "from ICES", target = "_blank"),
+  " and the source code for this dashboard is available from ",
+  tags$a(href = "https://github.com/pieterprovoost/ospar-cemp", "https://github.com/pieterprovoost/ospar-cemp", target = "_blank"),
+  ".", style = "margin-bottom: 20px;"),
   navset_pill(
     nav_panel(
       "Station timeseries",
