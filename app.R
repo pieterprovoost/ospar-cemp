@@ -6,6 +6,7 @@ library(tidyr)
 library(rnaturalearth)
 library(sf)
 library(ggplot2)
+library(leaflet)
 source("lib.R")
 
 options(shiny.autoreload = TRUE)
@@ -39,7 +40,7 @@ ui <- page_fluid(
       fluidRow(
         column(4, selectInput("determinand_group_select_3", "Determinand group:", choices = NULL))
       ),
-      plotOutput("determinand_map_plot")
+      leafletOutput("determinand_map_plot", height = "600px")
     )
   )
 )
@@ -155,15 +156,25 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
-  output$determinand_map_plot <- renderPlot({
-    req(input$determinand_group_select_3)
-    europe <- ne_countries(scale = 50, continent = "Europe", returnclass = "sf")
-    ggplot() +
-      geom_sf(data = europe, fill = "gray95", color = "gray70") +
-      geom_point(data = determinand_group_total_per_station_wide(), aes_string("station_longitude", "station_latitude", color = "subregion", size = as.name(input$determinand_group_select_3)), pch = 21) +
-      coord_sf(xlim = c(-35, 30), ylim = c(35, 65)) +
-      theme_minimal()
-  })
+output$determinand_map_plot <- renderLeaflet({
+  req(input$determinand_group_select_3)
+  data <- determinand_group_total_per_station_wide()
+  data$concentration <- data[[input$determinand_group_select_3]]
+  data$size <- data[[input$determinand_group_select_3]] / max(data[[input$determinand_group_select_3]], na.rm = TRUE)
+  
+  leaflet(data) %>%
+    addTiles() %>%
+    addCircleMarkers(
+      lng = ~station_longitude,
+      lat = ~station_latitude,
+      radius = ~sqrt(size) * 10,
+      fillOpacity = 0.1,
+      stroke = TRUE,
+      weight = 1,
+      popup = ~paste0("Average concentration: ", signif(concentration, 4), " ", default_units)
+    ) %>%
+    setView(lng = -2.5, lat = 50, zoom = 4)
+})
 
 }
 

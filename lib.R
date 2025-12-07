@@ -1,5 +1,6 @@
 library(dplyr)
 
+default_units <- "mg/kg"
 data_folder <- "data"
 data_file <- "sediment_data.csv"
 data_path <- file.path(data_folder, data_file)
