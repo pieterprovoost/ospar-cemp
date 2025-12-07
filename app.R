@@ -15,10 +15,14 @@ options(shiny.autoreload = TRUE)
 
 ui <- page_fluid(
   titlePanel("2025 OSPAR CEMP assessment"),
+  p("OSPAR is the mechanism by which 15 Governments and the European Union cooperate to protect the marine environment of the North-East Atlantic.
+  OSPAR's Coordinated Environmental Monitoring Programme (CEMP) aims to deliver comparable data from across the OSPAR Maritime Area.
+  This application visualizes data collected under the CEMP on sediment contaminants in the North-East Atlantic. The dataset is hosted by ICES and publicly available.
+  The source code for this dashboard is available from https://github.com/pieterprovoost/ospar-cemp.", style = "margin-bottom: 20px;"),
   navset_pill(
     nav_panel(
       "Station timeseries",
-      p("Explore measurement time series by station. Select a station to inspect the data."),
+      p("This tab lists all stations with sediment data, along with some statistics on the number of years with data and the period covered. The table can be filtered by subregion or country. Select a station in the table to inspect timeseries for the different contaminant groups. While the dataset contains concentrations for individual contaminants, concentrations have been summed per contaminant group to keep the visualization comprehensible. The plotted values can be optionally log transformed.", style = "margin-top: 20px;"),
       fluidRow(
         column(4, selectInput("subregion_filter", "Subregion:", choices = NULL)),
         column(4, selectInput("country_filter_1", "Country:", choices = NULL)),
@@ -28,22 +32,25 @@ ui <- page_fluid(
       plotOutput("station_plot")
     ),
     nav_panel(
-      "Compare determinand groups",
+      "Compare contaminant groups",
+      p("This tab visualizes the average concentration of different contaminants for each station. Click the bubbles to get more information for a specific station.", style = "margin-top: 20px;"),
       fluidRow(
-        column(4, selectInput("determinand_group_select_1", "Determinand group 1:", choices = NULL)),
-        column(4, selectInput("determinand_group_select_2", "Determinand group 2:", choices = NULL))
+        column(4, selectInput("determinand_group_select_1", "Contaminant group 1:", choices = NULL)),
+        column(4, selectInput("determinand_group_select_2", "Contaminant group 2:", choices = NULL))
       ),
       plotOutput("determinand_group_plot")
     ),
     nav_panel(
       "Station map",
+      p("This tab visualizes the average concentration of different contaminants for each station on a map.", style = "margin-top: 20px;"),
       fluidRow(
-        column(4, selectInput("determinand_group_select_3", "Determinand group:", choices = NULL))
+        column(4, selectInput("determinand_group_select_3", "Contaminant group:", choices = NULL))
       ),
       leafletOutput("determinand_map_plot", height = "600px")
     ),
     nav_panel(
       "Compare countries",
+      p("This tab compares contaminant concentrations between two countries. To assess whether concentrations for different groups differ between countries, Mann-Whitney U tests are performed for every contaminant group.", style = "margin-top: 20px;"),
       fluidRow(
         column(4, selectInput("country_filter_2", "Country:", choices = NULL)),
         column(4, selectInput("country_filter_3", "Country:", choices = NULL))
