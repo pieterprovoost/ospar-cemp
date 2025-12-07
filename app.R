@@ -48,7 +48,8 @@ ui <- page_fluid(
         column(4, selectInput("country_filter_2", "Country:", choices = NULL)),
         column(4, selectInput("country_filter_3", "Country:", choices = NULL))
       ),
-      plotOutput("country_plot")
+      plotOutput("country_plot"),
+      verbatimTextOutput("country_results")
     )
   )
 )
@@ -197,6 +198,28 @@ server <- function(input, output, session) {
       geom_jitter(data = data, aes(country, concentration), height = 0, width = 0.2) +
       facet_wrap(~determinand_group, scales = "free") +
       theme_minimal()
+  })
+
+  output$country_results <- renderText({
+    data <- determinand_group_total_per_station() %>% 
+      filter(country %in% c(input$country_filter_2, input$country_filter_3))
+    
+    det_groups <- unique(data$determinand_group)
+    
+    results <- sapply(det_groups, function(group) {
+      group_data <- data %>% filter(determinand_group == group)
+      
+      country1_data <- group_data %>% filter(country == input$country_filter_2) %>% pull(concentration)
+      country2_data <- group_data %>% filter(country == input$country_filter_3) %>% pull(concentration)
+      
+      if (length(country1_data) > 0 && length(country2_data) > 0) {
+        test <- wilcox.test(country1_data, country2_data)
+        sprintf("%s: p-value = %.5f (n1=%d, n2=%d)", group, test$p.value, length(country1_data), length(country2_data))
+      } else {
+        sprintf("%s: Not enough data", group)
+      }
+    })
+    paste(c(sprintf("Mann-Whitney U results (%s vs %s):\n", input$country_filter_2, input$country_filter_3), results), collapse = "\n")
   })
 
 }
