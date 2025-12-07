@@ -6,12 +6,12 @@ library(tidyr)
 library(sf)
 library(leaflet)
 
+# Load the data reading function.
 source("lib.R")
 
 options(shiny.autoreload = TRUE)
 
-# UI
-
+#' This is the UI part for the Shiny app.
 ui <- page_fluid(
   titlePanel("OSPAR CEMP sediment contaminants"),
   p("OSPAR is the mechanism by which 15 Governments and the European Union cooperate to protect the marine environment of the North-East Atlantic.
@@ -63,10 +63,10 @@ ui <- page_fluid(
   )
 )
 
-# server
-
+#' This is the server part for the Shiny app.
 server <- function(input, output, session) {
 
+  # Try reading sediment data and display an error message if it is not available
   sediment_data <- reactive({
     tryCatch(
       {
@@ -79,6 +79,7 @@ server <- function(input, output, session) {
     )
   })
 
+  # Create a list of stations with coordinates.
   station_list <- reactive({
     req(sediment_data())
     sediment_data() %>%
@@ -94,6 +95,7 @@ server <- function(input, output, session) {
       arrange(region, subregion, country, station_name)
     })
 
+  # Calculate average contaminant group concentrations per station.
   determinand_group_total_per_station <- reactive({
     req(sediment_data())
     sediment_data() %>% 
@@ -103,12 +105,14 @@ server <- function(input, output, session) {
       summarize(concentration = mean(concentration))
   })
 
+  # Convert average contaminant group concentrations per station to wide format.
   determinand_group_total_per_station_wide <- reactive({
     req(determinand_group_total_per_station())
     determinand_group_total_per_station() %>%
       pivot_wider(id_cols = c(subregion, country, waterbody_type, station_type, station_name, station_longitude, station_latitude), names_from = determinand_group, values_from = concentration)
   })
 
+  # Filter stations list using subregion and country filters.
   filtered_data <- reactive({
     req(station_list())
     data <- station_list()
@@ -123,6 +127,7 @@ server <- function(input, output, session) {
       arrange(desc(years))
   })
   
+  # Update select options as data becomes available.
   observe({
     req(sediment_data())
     subregions <- c("All", unique(sediment_data()$subregion))
@@ -138,11 +143,13 @@ server <- function(input, output, session) {
     updateSelectInput(session, "determinand_group_select_3", choices = determinand_groups, selected = determinand_groups[1])
   })
 
+  # Render the stations list.
   output$station_list <- DT::renderDataTable(
     filtered_data() %>% 
       DT::datatable(selection = "single", rownames = FALSE, options = list(pageLength = 10, searching = FALSE))
   )
   
+  # Render a plot with timeseries data for a single station.
   output$station_plot <- renderPlot({
     req(input$station_list_rows_selected)
     
@@ -170,6 +177,7 @@ server <- function(input, output, session) {
     })
   })
 
+  # Render a plot of concentrations for a pair of contaminants.
   output$determinand_group_plot <- renderPlot({
     req(input$determinand_group_select_1)
     req(input$determinand_group_select_2)
@@ -183,6 +191,7 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
+  # Render a Leaflet map shwoing concentrations for a specific contaminant group.
   output$determinand_map_plot <- renderLeaflet({
     req(input$determinand_group_select_3)
     data <- determinand_group_total_per_station_wide()
@@ -203,6 +212,7 @@ server <- function(input, output, session) {
       setView(lng = -2.5, lat = 50, zoom = 4)
   })
 
+  # Render a plot comparing contaminant group concentrations between two countries.
   output$country_plot <- renderPlot({
     data <- determinand_group_total_per_station() %>% 
       filter(country %in% c(input$country_filter_2, input$country_filter_3))
@@ -216,6 +226,7 @@ server <- function(input, output, session) {
       theme_minimal()
   })
 
+  # Run Mann_Whitney U tests comparing contaminant group concentrations between two countries.
   output$country_results <- DT::renderDataTable({
     data <- determinand_group_total_per_station() %>% 
       filter(country %in% c(input$country_filter_2, input$country_filter_3))

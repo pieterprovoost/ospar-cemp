@@ -5,10 +5,11 @@ data_folder <- "data"
 data_file <- "sediment_data.csv"
 data_path <- file.path(data_folder, data_file)
 
+#' Read sediment data from CSV. Ensure units are consistent.
 read_sediment_data <- function() {
   read.csv(data_path) %>% 
     mutate(sample_date = lubridate::ymd(sample_date)) %>% 
-    # convert all to mg/kg
+    # Convert all to mg/kg
     mutate(
       concentration = case_when(
         unit == "ug/kg" ~ concentration / 1000,
@@ -19,6 +20,6 @@ read_sediment_data <- function() {
         TRUE ~ unit
       )
     ) %>% 
-    # remove impossible values
+    # Remove impossible values
     filter(concentration < 1000000)
 }
