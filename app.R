@@ -3,7 +3,6 @@ library(ggplot2)
 library(dplyr)
 library(bslib)
 library(tidyr)
-library(sf)
 library(leaflet)
 
 # Load the data reading function.
