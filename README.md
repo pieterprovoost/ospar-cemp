@@ -14,3 +14,5 @@ Try the app at <https://shiny.pieterprovoost.be/ospar-cemp/>.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+![screenshot](screenshot.png)
